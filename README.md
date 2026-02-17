@@ -41,7 +41,7 @@ It supports:
 
 ---
 
-# Local browser testing local app hosted on 127
+# Local browser testing local app hosted on 127 (bring up https://github.com/saucelabs/the-internet.git)
 
 Target:
 http://127.0.0.1:9292
