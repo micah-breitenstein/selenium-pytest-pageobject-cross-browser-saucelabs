@@ -82,6 +82,10 @@ def _make_remote_options(browser: str):
 # -------------------------
 # DRIVER FIXTURE
 # -------------------------
+@pytest.fixture(scope="session")
+def base_url() -> str:
+    return os.getenv("BASE_URL", "http://127.0.0.1:9292").rstrip("/")
+
 @pytest.fixture
 def driver(request):
     browser = request.config.getoption("--browser")
