@@ -4,40 +4,43 @@ from pages.core.base_page import BasePage
 
 class DynamicContentPage(BasePage):
     URL_PATH = "/dynamic_content"
-
     ALL_ROWS = (By.CSS_SELECTOR, "#content .row")
-    ROW_IMAGE = (By.CSS_SELECTOR, ".large-2 img")
     ROW_TEXT = (By.CSS_SELECTOR, ".large-10")
+    ROW_IMAGE = (By.CSS_SELECTOR, ".large-2 img")
 
-    def open_page(self) -> None:
-        self.driver.get(f"{self.config.base_url}{self.URL_PATH}")
+    def open_page(self, static: bool = False) -> None:
+        url = f"{self.config.base_url}{self.URL_PATH}"
+        if static:
+            url += "?with_content=static"
+        self.driver.get(url)
         self.wait_visible(self.ALL_ROWS)
 
     def rows(self):
-        rows = self.find_all(self.ALL_ROWS)
-
-        dyn = []
-        for r in rows:
-            # Must have the text container
-            text_els = r.find_elements(*self.ROW_TEXT)
-            if not text_els:
-                continue
-
-            txt = text_els[0].text.strip()
-            if not txt:
-                continue  # skip layout/empty rows
-
-            dyn.append(r)
-
-        self.log.info(f"ALL_ROWS={len(rows)} DYNAMIC_ROWS={len(dyn)}")
-        return dyn
-
-    def row_count(self) -> int:
-        return len(self.rows())
+        return self.find_all(self.ALL_ROWS)
 
     def rows_text(self) -> list[str]:
-        return [r.find_element(*self.ROW_TEXT).text.strip() for r in self.rows()]
+        rows = self.rows()
+        texts = []
+        for r in rows:
+            els = r.find_elements(*self.ROW_TEXT)
+            if els:
+                t = els[0].text.strip()
+                if t:
+                    texts.append(t)
+        return texts
+
+    def rows_image_src(self) -> list[str]:
+        rows = self.rows()
+        srcs = []
+        for r in rows:
+            imgs = r.find_elements(*self.ROW_IMAGE)
+            if imgs:
+                srcs.append(imgs[0].get_attribute("src") or "")
+        return srcs
 
     def refresh(self) -> None:
         self.driver.refresh()
         self.wait_visible(self.ALL_ROWS)
+
+    def row_count(self) -> int:
+        return len(self.rows_text())    

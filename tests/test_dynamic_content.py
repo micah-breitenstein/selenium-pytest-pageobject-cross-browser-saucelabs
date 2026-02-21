@@ -27,3 +27,41 @@ def test_dynamic_content_changes_after_refresh(driver, base_url):
             break
 
     assert changed
+
+
+def test_dynamic_content_static_mode_most_text_stays_same(driver, base_url):
+    page = DynamicContentPage(driver, base_url=base_url)
+    page.open_page(static=True)
+
+    before = page.rows_text()
+    assert before, "Expected at least one non-empty text row"
+
+    for _ in range(3):
+        page.refresh()
+        after = page.rows_text()
+
+        # Compare row-by-row (up to the shorter length)
+        pairs = list(zip(before, after))
+        same_count = sum(1 for b, a in pairs if b == a)
+
+        # Expect at least 2 rows to remain identical (tune if needed)
+        assert same_count >= 2, f"Expected most static rows to stay same. same_count={same_count}\nBefore={before}\nAfter={after}"
+
+
+def test_dynamic_content_dynamic_mode_text_changes(driver, base_url):
+    page = DynamicContentPage(driver, base_url=base_url)
+    page.open_page(static=False)
+
+    before = page.rows_text()
+    assert before, "Expected at least one non-empty text row"
+
+    changed = False
+    last = before
+    for _ in range(5):
+        page.refresh()
+        last = page.rows_text()
+        if last != before:
+            changed = True
+            break
+
+    assert changed, f"Expected dynamic text to change within 5 refreshes. Before={before}, Last={last}"
