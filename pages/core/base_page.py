@@ -129,3 +129,11 @@ class BasePage:
         self.log.info(f"BASE_URL = {self.config.base_url}")
         self.log.info(f"GO → {url}")
         self.driver.get(url)
+    
+    def find(self, locator):
+        self.log.info(f"FIND → {locator}")
+        return self.driver.find_element(*locator)
+
+    def find_all(self, locator):
+        self.log.info(f"FIND ALL → {locator}")
+        return self.driver.find_elements(*locator)
