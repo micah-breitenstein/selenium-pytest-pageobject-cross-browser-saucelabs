@@ -2,7 +2,7 @@ import os
 import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from pages.ab_test_page import ABTestPage
+from pages import ABTestPage
 
 
 @pytest.fixture

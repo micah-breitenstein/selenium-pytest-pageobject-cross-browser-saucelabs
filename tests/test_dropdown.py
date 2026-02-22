@@ -1,4 +1,4 @@
-from pages.dropdown_page import DropdownPage
+from pages import DropdownPage
 
 
 def test_dropdown_default_selection(driver, base_url):

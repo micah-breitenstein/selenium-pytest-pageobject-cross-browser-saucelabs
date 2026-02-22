@@ -1,4 +1,4 @@
-from pages.digest_auth_page import DigestAuthPage
+from pages import DigestAuthPage
 
 def test_digest_auth_succeeds(driver, base_url):
     page = DigestAuthPage(driver, base_url)

@@ -1,5 +1,5 @@
 import requests
-from pages.broken_images_page import BrokenImagesPage
+from pages import BrokenImagesPage
 
 
 def _is_img_broken(driver, img_element) -> bool:

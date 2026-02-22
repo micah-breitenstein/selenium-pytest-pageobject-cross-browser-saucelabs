@@ -1,7 +1,7 @@
 import requests
 from requests.auth import HTTPBasicAuth
 
-from pages.basic_auth_page import BasicAuthPage
+from pages import BasicAuthPage
 
 
 def test_basic_auth_success(driver, base_url):

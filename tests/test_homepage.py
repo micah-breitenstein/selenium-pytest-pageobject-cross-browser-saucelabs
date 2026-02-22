@@ -1,4 +1,4 @@
-from pages.homepage import HomePage
+from pages import HomePage
 
 
 def test_homepage_heading_safari(driver):

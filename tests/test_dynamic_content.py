@@ -1,4 +1,5 @@
-from pages.dynamic_content_page import DynamicContentPage
+from pages import DynamicContentPage
+
 
 
 def test_dynamic_content_has_rows(driver, base_url):

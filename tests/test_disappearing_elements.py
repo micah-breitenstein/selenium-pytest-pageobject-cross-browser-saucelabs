@@ -1,4 +1,4 @@
-from pages.disappearing_elements_page import DisappearingElementsPage
+from pages import DisappearingElementsPage
 
 
 def test_core_menu_items_are_present(driver, base_url):

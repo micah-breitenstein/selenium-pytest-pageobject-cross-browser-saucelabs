@@ -1,4 +1,4 @@
-from pages.challenging_dom_page import ChallengingDomPage
+from pages import ChallengingDomPage
 
 
 def test_delete_first_row_by_column_text(driver, base_url):

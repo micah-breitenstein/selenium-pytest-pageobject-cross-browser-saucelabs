@@ -1,4 +1,4 @@
-from pages.add_remove_elements_page import AddRemoveElementsPage
+from pages import AddRemoveElementsPage
 
 
 def test_add_one_delete_button(driver, base_url):

@@ -1,5 +1,5 @@
 import time
-from pages.drag_and_drop_page import DragAndDropPage
+from pages import DragAndDropPage
 
 def test_drag_and_drop_swaps_twice(driver, base_url):
     page = DragAndDropPage(driver, base_url)

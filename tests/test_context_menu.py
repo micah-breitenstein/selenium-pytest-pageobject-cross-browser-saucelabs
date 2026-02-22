@@ -1,6 +1,6 @@
 import pytest
 from selenium.common.exceptions import NoAlertPresentException
-from pages.context_menu_page import ContextMenuPage
+from pages import ContextMenuPage
 
 
 def test_context_menu_alert_can_be_accepted(driver, base_url):

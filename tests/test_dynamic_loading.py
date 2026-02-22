@@ -1,4 +1,4 @@
-from pages.landing_page import LandingPage
+from pages import LandingPage
 
 
 def test_dynamic_loading_example_2(landing):

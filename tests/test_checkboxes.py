@@ -1,4 +1,4 @@
-from pages.landing_page import LandingPage
+from pages import LandingPage
 
 def test_checkboxes_toggle(landing):
     page = landing.load().go_to_checkboxes()
