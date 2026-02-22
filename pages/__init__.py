@@ -22,6 +22,7 @@ _EXPORTS: dict[str, str] = {
     "LandingPage": "landing_page",
     "LoginPage": "login_page",
     "SecureAreaPage": "secure_area_page",
+    "ExitIntentPage": "exit_intent_page",
 }
 
 __all__ = sorted(_EXPORTS.keys())
