@@ -1,7 +1,8 @@
-git clone git@github.com:micah-breitenstein/selenium-pytest-pageobject-cross-browser-saucelabs.git
-cd selenium-pytest-pageobject-cross-browser-saucelabs
-python3 -m venv .venv
-source .venv/bin/activate
+# Clone the repo
+git clone git@github.com:micah-breitenstein/selenium-pytest-pageobject-cross-browser-saucelabs.git \
+cd selenium-pytest-pageobject-cross-browser-saucelabs \
+python3 -m venv .venv \
+source .venv/bin/activate \
 pip install pytest selenium webdriver-manager pytest-xdist
 
 # Local browser testing local app hosted on 127
