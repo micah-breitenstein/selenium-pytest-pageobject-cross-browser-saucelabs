@@ -1,5 +1,7 @@
+import pytest
 from pages import DigestAuthPage
 
+@pytest.mark.no_safari
 def test_digest_auth_succeeds(driver, base_url):
     page = DigestAuthPage(driver, base_url)
     page.open()

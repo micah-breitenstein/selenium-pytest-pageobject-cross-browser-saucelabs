@@ -1,9 +1,16 @@
+# conftest.py
 import os
+import time
 import pytest
 import logging
 
 from datetime import datetime
 from selenium import webdriver
+from selenium.common.exceptions import (
+    InvalidSessionIdException,
+    WebDriverException,
+    NoSuchWindowException,
+)
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -55,21 +62,21 @@ def pytest_addoption(parser):
 
 
 # -------------------------
-# BASE URL FIXTURE
+# BASE URL (single source of truth)
 # -------------------------
-@pytest.fixture
-def base_url(request):
+@pytest.fixture(scope="session")
+def base_url(request) -> str:
     return request.config.getoption("--base-url").rstrip("/")
 
 
+# -------------------------
+# SAUCE HELPERS
+# -------------------------
 def _sauce_hub(region: str) -> str:
     return f"https://ondemand.{region}.saucelabs.com/wd/hub"
 
 
 def _make_remote_options(browser: str):
-    """
-    Returns the correct Selenium Options object for the given browser.
-    """
     if browser == "chrome":
         return webdriver.ChromeOptions()
     if browser == "firefox":
@@ -79,79 +86,185 @@ def _make_remote_options(browser: str):
     raise ValueError("For Sauce runs, use --browser=chrome|firefox|edge")
 
 
+def _create_remote(request):
+    browser = request.config.getoption("--browser")
+
+    sauce_user = os.getenv("SAUCE_USERNAME")
+    sauce_key = os.getenv("SAUCE_ACCESS_KEY")
+    if not sauce_user or not sauce_key:
+        raise RuntimeError("Set SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables")
+
+    platform = request.config.getoption("--platform")
+    browser_version = request.config.getoption("--browser-version")
+    region = request.config.getoption("--sauce-region")
+
+    options = _make_remote_options(browser)
+
+    browser_name = "MicrosoftEdge" if browser == "edge" else browser
+    options.set_capability("browserName", browser_name)
+    options.set_capability("platformName", platform)
+
+    if not (browser == "edge" and str(browser_version).startswith("latest")):
+        options.set_capability("browserVersion", browser_version)
+
+    sauce_opts = {
+        "username": sauce_user,
+        "accessKey": sauce_key,
+        "name": request.module.__name__,
+        "build": os.getenv("BUILD_TAG", "selenium-python-basics"),
+    }
+    options.set_capability("sauce:options", sauce_opts)
+
+    return webdriver.Remote(
+        command_executor=_sauce_hub(region),
+        options=options,
+    )
+
+
 # -------------------------
-# DRIVER FIXTURE
+# CHROMEDRIVER SERVICE (WDM only once per run)
 # -------------------------
 @pytest.fixture(scope="session")
-def base_url() -> str:
-    return os.getenv("BASE_URL", "http://127.0.0.1:9292").rstrip("/")
+def chrome_service():
+    return ChromeService(ChromeDriverManager().install())
 
-@pytest.fixture
-def driver(request):
-    browser = request.config.getoption("--browser")
+
+def _create_local_chrome(request, chrome_service):
     headless = request.config.getoption("--headless")
+    options = webdriver.ChromeOptions()
+    if headless:
+        options.add_argument("--headless=new")
+        options.add_argument("--window-size=1920,1080")
+    else:
+        options.add_argument("--start-maximized")
+    return webdriver.Chrome(service=chrome_service, options=options)
+
+
+def _create_local_safari_with_retry(base_url: str, attempts: int = 3, delay_s: float = 0.6):
+    """
+    SafariDriver can sometimes hand out a session id but immediately invalidate it.
+    We validate by issuing a trivial command right away. If it fails, retry.
+    """
+    last_exc: Exception | None = None
+    for i in range(1, attempts + 1):
+        drv = None
+        try:
+            drv = webdriver.Safari()
+            # "Health check": first command must succeed or this session is toast.
+            drv.get(base_url + "/")
+            return drv
+        except (InvalidSessionIdException, WebDriverException) as e:
+            last_exc = e
+            try:
+                if drv:
+                    drv.quit()
+            except Exception:
+                pass
+            time.sleep(delay_s)
+    raise RuntimeError(
+        "SafariDriver session becomes invalid immediately (InvalidSessionIdException).\n"
+        "Most common causes:\n"
+        "  - Safari remote automation not enabled/authorized\n"
+        "  - xdist (-n) enabled (Safari can't run under multiple workers)\n"
+        f"Last error: {type(last_exc).__name__}: {last_exc}"
+    )
+
+
+def _xdist_num_workers(config) -> int:
+    # pytest-xdist sets config.option.numprocesses (int or 'auto').
+    n = getattr(getattr(config, "option", None), "numprocesses", 0)
+    if n == "auto":
+        return 999  # treat as enabled
+    try:
+        return int(n)
+    except Exception:
+        return 0
+
+
+# -------------------------
+# DRIVER FIXTURE
+# - Chrome local: module-scoped (fast)
+# - Safari local: function-scoped (new browser per test, stable model)
+# - Remote: module-scoped (fast)
+# -------------------------
+@pytest.fixture(scope="module")
+def _module_driver_chrome(request, chrome_service):
+    drv = _create_local_chrome(request, chrome_service)
+    yield drv
+    try:
+        drv.quit()
+    except Exception:
+        pass
+
+
+@pytest.fixture(scope="module")
+def _module_driver_remote(request):
+    drv = _create_remote(request)
+    yield drv
+    try:
+        drv.quit()
+    except Exception:
+        pass
+
+
+@pytest.fixture(scope="function")
+def driver(request, base_url):
+    browser = request.config.getoption("--browser")
     remote = request.config.getoption("--remote")
 
     if remote:
-        sauce_user = os.getenv("SAUCE_USERNAME")
-        sauce_key = os.getenv("SAUCE_ACCESS_KEY")
-        if not sauce_user or not sauce_key:
-            raise RuntimeError("Set SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables")
+        return request.getfixturevalue("_module_driver_remote")
 
-        platform = request.config.getoption("--platform")
-        browser_version = request.config.getoption("--browser-version")
-        region = request.config.getoption("--sauce-region")
-
-        options = _make_remote_options(browser)
-
-        # Sauce is picky about Edge naming
-        browser_name = "MicrosoftEdge" if browser == "edge" else browser
-        options.set_capability("browserName", browser_name)
-
-        # platformName is required
-        options.set_capability("platformName", platform)
-
-        # Sauce commonly accepts "latest" for Chrome/Firefox.
-        # Edge sometimes rejects "latest" depending on region/availability.
-        if not (browser == "edge" and str(browser_version).startswith("latest")):
-            options.set_capability("browserVersion", browser_version)
-
-        sauce_opts = {
-            "username": sauce_user,
-            "accessKey": sauce_key,
-            "name": request.node.name,
-            "build": os.getenv("BUILD_TAG", "selenium-python-basics"),
-        }
-        options.set_capability("sauce:options", sauce_opts)
-
-        driver = webdriver.Remote(
-            command_executor=_sauce_hub(region),
-            options=options,
-        )
-
-    else:
-        # Local run
-        if browser == "chrome":
-            options = webdriver.ChromeOptions()
-            if headless:
-                options.add_argument("--headless=new")
-                options.add_argument("--window-size=1920,1080")
-            else:
-                options.add_argument("--start-maximized")
-
-            driver = webdriver.Chrome(
-                service=ChromeService(ChromeDriverManager().install()),
-                options=options,
+    # HARD BLOCK: local Safari + xdist => not supported
+    if browser == "safari":
+        workers = _xdist_num_workers(request.config)
+        if workers and workers > 0:
+            raise RuntimeError(
+                "You are running with pytest-xdist (-n enabled). Local Safari cannot run under xdist.\n"
+                "Run Safari serially:\n"
+                "  python -m pytest -q -s --browser=safari -n 0 --base-url=http://127.0.0.1:9292\n"
+                "Or use Chrome for parallel:\n"
+                "  python -m pytest -q -s --browser=chrome -n auto --base-url=http://127.0.0.1:9292"
             )
 
-        elif browser == "safari":
-            driver = webdriver.Safari()
+        drv = _create_local_safari_with_retry(base_url=base_url)
+        try:
+            yield drv
+        finally:
+            try:
+                drv.quit()
+            except Exception:
+                pass
+        return
 
+    if browser == "chrome":
+        drv = request.getfixturevalue("_module_driver_chrome")
+        yield drv
+        return
+
+    raise ValueError("Local runs support --browser=chrome or --browser=safari (remote supports chrome|firefox|edge)")
+
+
+# -------------------------
+# OPTIONAL: Reset state between tests
+# -------------------------
+@pytest.fixture(autouse=True)
+def _reset_between_tests(driver, base_url, request):
+    browser = request.config.getoption("--browser")
+    try:
+        driver.delete_all_cookies()
+        driver.execute_script("window.localStorage.clear(); window.sessionStorage.clear();")
+
+        # Safari can be touchy about about:blank; take it home instead.
+        if browser == "safari":
+            driver.get(base_url + "/")
         else:
-            raise ValueError("Local runs support --browser=chrome or --browser=safari")
+            driver.get("about:blank")
 
-    yield driver
-    driver.quit()
+    except (InvalidSessionIdException, NoSuchWindowException, WebDriverException):
+        pass
+    except Exception:
+        pass
 
 
 # -------------------------
@@ -164,9 +277,6 @@ def page(driver, base_url):
     return _make
 
 
-# -------------------------
-# LANDING PAGE FIXTURE
-# -------------------------
 @pytest.fixture
 def landing(driver, base_url):
     from pages.landing_page import LandingPage
@@ -176,6 +286,24 @@ def landing(driver, base_url):
 # -------------------------
 # SCREENSHOT + SAUCE PASS/FAIL ON REPORT
 # -------------------------
+def _safe_screenshot(drv, path: str) -> tuple[bool, str | None]:
+    """
+    SafariDriver screenshots can hang for a long time.
+    We skip screenshots entirely on Safari to avoid 20+ minute runs on failures.
+    """
+    try:
+        browser_name = drv.capabilities.get("browserName", "").lower()
+        if browser_name == "safari":
+            return (False, "Skipped screenshot on Safari (can hang)")
+
+        ok = drv.save_screenshot(path)
+        return (bool(ok), None)
+    except (InvalidSessionIdException, NoSuchWindowException, WebDriverException) as e:
+        return (False, f"{type(e).__name__}: {e}")
+    except Exception as e:
+        return (False, f"{type(e).__name__}: {e}")
+
+
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     outcome = yield
@@ -185,30 +313,47 @@ def pytest_runtest_makereport(item, call):
     if not drv:
         return
 
-    # Screenshot on failure
     if report.when == "call" and report.failed:
         os.makedirs("artifacts", exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d-%H%M%S")
         path = f"artifacts/{item.name}-{ts}.png"
-        drv.save_screenshot(path)
-        report.longrepr = f"{report.longrepr}\n\nScreenshot saved: {path}"
 
-    # Tell Sauce pass/fail
+        ok, err = _safe_screenshot(drv, path)
+        if ok:
+            report.longrepr = f"{report.longrepr}\n\nScreenshot saved: {path}"
+        else:
+            report.longrepr = f"{report.longrepr}\n\nScreenshot skipped: {err}"
+
     if item.config.getoption("--remote") and report.when == "call":
         result = "passed" if report.passed else "failed"
         try:
             drv.execute_script(f"sauce:job-result={result}")
         except Exception:
-            # Don't fail the test run if Sauce reporting fails
             pass
 
 
 # -------------------------
-# LOGGING CONFIG
+# MARKERS / SAFARI SKIPS / LOGGING CONFIG
 # -------------------------
 def pytest_configure(config):
     os.environ["BASE_URL"] = config.getoption("--base-url")
+
+    # Register markers (prevents "unknown marker" warnings)
+    config.addinivalue_line(
+        "markers",
+        "no_safari: skip this test when running with Safari WebDriver",
+    )
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
+
+
+def pytest_runtest_setup(item):
+    """
+    If a test is marked with @pytest.mark.no_safari, skip it when --browser=safari.
+    """
+    browser = item.config.getoption("--browser", default="safari").lower()
+    if browser == "safari" and item.get_closest_marker("no_safari"):
+        pytest.skip("Skipped on Safari (SafariDriver limitation).")

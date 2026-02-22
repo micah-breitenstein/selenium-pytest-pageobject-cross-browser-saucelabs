@@ -17,6 +17,7 @@ _EXPORTS: dict[str, str] = {
     "DropdownPage": "dropdown_page",
     "DynamicContentPage": "dynamic_content_page",
     "DynamicLoadingPage": "dynamic_loading_page",
+    "EntryAdPage": "entry_ad_page",
     "HomePage": "homepage",
     "LandingPage": "landing_page",
     "LoginPage": "login_page",
