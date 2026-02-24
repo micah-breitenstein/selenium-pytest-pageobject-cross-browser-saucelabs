@@ -1,5 +1,7 @@
 import logging
 import pytest
+import re
+
 from pages import FileDownloadPage
 
 log = logging.getLogger(__name__)
@@ -31,20 +33,20 @@ def test_download_links_return_200(driver, base_url):
     assert not failures, f"Some download links did not return 200: {failures}"
 
 
-TARGET_FILE = "LAKETAHOECAVEROCK.JPG"
+PATTERN = re.compile(r"^LAKETAHOECAVEROCK_[0-9a-fA-F]{8}\.JPG$")
 
 
 def test_target_file_presence_logs_only(driver, base_url):
     page = FileDownloadPage(driver, base_url=base_url).open()
-
     file_names = page.file_names()
 
-    found = any(name.upper() == TARGET_FILE.upper() for name in file_names)
+    matches = [name for name in file_names if PATTERN.match(name)]
 
-    if found:
-        log.info("✅ Target file FOUND: %s", TARGET_FILE)
+    if matches:
+        log.info("✅ Matching file(s) found:")
+        for m in matches:
+            log.info("   - %s", m)
     else:
-        log.info("⚠️ Target file NOT found: %s", TARGET_FILE)
+        log.info("⚠️ No matching files found.")
 
-    # Always pass
-    assert True
+    assert True  # logging-only test
