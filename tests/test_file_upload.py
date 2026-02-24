@@ -1,17 +1,13 @@
 from pathlib import Path
-import pytest
 from pages import FileUploadPage
 
+ORIGINAL_FILE = Path("test_file/LAKETAHOECAVEROCK.JPG")
 
-TEST_ASSET = Path("test_file/LAKETAHOECAVEROCK.JPG")
 
+def test_file_upload_unique_name(driver, base_url):
+    page = FileUploadPage(driver, base_url).open()
 
-def test_file_upload_jpg(driver, base_url):
-    if not TEST_ASSET.exists():
-        pytest.skip(f"Test asset not found: {TEST_ASSET}")
-
-    page = FileUploadPage(driver, base_url=base_url).open()
-    page.upload_file(TEST_ASSET, upload_timeout=60)
+    unique_name = page.upload_file_with_unique_name(ORIGINAL_FILE)
 
     assert page.upload_success_message() == "File Uploaded!"
-    assert page.uploaded_filename() == TEST_ASSET.name
+    assert page.uploaded_filename() == unique_name
