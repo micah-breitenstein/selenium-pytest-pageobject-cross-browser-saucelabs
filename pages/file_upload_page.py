@@ -1,42 +1,62 @@
-# pages/file_upload_page.py
+from __future__ import annotations
 
 from pathlib import Path
+import shutil
+import uuid
+import tempfile
+
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-from pages.core.base_page import BasePage
 
+class FileUploadPage:
+    """
+    Page object for https://the-internet.herokuapp.com/upload
+    """
 
-class FileUploadPage(BasePage):
     PATH = "/upload"
 
     FILE_INPUT = (By.ID, "file-upload")
-    HEADER = (By.CSS_SELECTOR, "#content h3")
+    SUBMIT_BTN = (By.ID, "file-submit")
+    RESULT_HEADER = (By.TAG_NAME, "h3")
     UPLOADED_FILENAME = (By.ID, "uploaded-files")
 
-    def open(self):
-        self.driver.get(self.config.base_url + self.PATH)
-        self.wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
-        self.wait.until(EC.presence_of_element_located(self.FILE_INPUT))
+    def __init__(self, driver, base_url: str):
+        self.driver = driver
+        self.base_url = base_url.rstrip("/")
+
+    def open(self) -> "FileUploadPage":
+        self.driver.get(f"{self.base_url}{self.PATH}")
         return self
 
-    def upload_file(self, file_path: str | Path, upload_timeout: int = 30):
-        file_path = str(Path(file_path).resolve())
+    # 🔥 New method: upload with unique filename
+    def upload_file_with_unique_name(
+        self,
+        original_file: Path | str,
+        upload_timeout: int = 30
+    ) -> str:
+        original = Path(original_file)
+        if not original.exists():
+            raise FileNotFoundError(f"Upload file not found: {original}")
 
-        file_input = self.wait.until(EC.presence_of_element_located(self.FILE_INPUT))
-        file_input.send_keys(file_path)
+        unique_name = f"{original.stem}_{uuid.uuid4().hex[:8]}{original.suffix}"
 
-        # ✅ Safari-safe: submit the parent form of the file input
-        self.driver.execute_script("arguments[0].form.submit();", file_input)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            temp_path = Path(tmp_dir) / unique_name
+            shutil.copy(original, temp_path)
 
-        long_wait = WebDriverWait(self.driver, upload_timeout)
-        long_wait.until(EC.text_to_be_present_in_element(self.HEADER, "File Uploaded!"))
-        long_wait.until(EC.visibility_of_element_located(self.UPLOADED_FILENAME))
-        return self
+            self.driver.find_element(*self.FILE_INPUT).send_keys(str(temp_path))
+            self.driver.find_element(*self.SUBMIT_BTN).click()
+
+            WebDriverWait(self.driver, upload_timeout).until(
+                EC.text_to_be_present_in_element(self.RESULT_HEADER, "File Uploaded")
+            )
+
+        return unique_name
 
     def upload_success_message(self) -> str:
-        return self.wait.until(EC.visibility_of_element_located(self.HEADER)).text
+        return self.driver.find_element(*self.RESULT_HEADER).text.strip()
 
     def uploaded_filename(self) -> str:
-        return self.wait.until(EC.visibility_of_element_located(self.UPLOADED_FILENAME)).text.strip()
+        return self.driver.find_element(*self.UPLOADED_FILENAME).text.strip()
