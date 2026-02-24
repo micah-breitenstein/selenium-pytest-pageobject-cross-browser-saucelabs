@@ -25,6 +25,8 @@ _EXPORTS: dict[str, str] = {
     "ExitIntentPage": "exit_intent_page",
     "FileDownloadPage": "file_download_page",
     "FileUploadPage": "file_upload_page",
+    "FloatingMenuPage": "floating_menu_page",
+
 }
 
 __all__ = sorted(_EXPORTS.keys())
