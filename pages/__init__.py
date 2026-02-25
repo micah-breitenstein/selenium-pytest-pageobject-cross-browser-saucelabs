@@ -27,8 +27,8 @@ _EXPORTS: dict[str, str] = {
     "FileUploadPage": "file_upload_page",
     "FloatingMenuPage": "floating_menu_page",
     "ForgotPasswordPage": "forgot_password_page",
-
-
+    "IFramePage": "iframe_page",
+    
 }
 
 __all__ = sorted(_EXPORTS.keys())
