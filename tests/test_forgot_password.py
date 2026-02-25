@@ -1,8 +1,6 @@
 import pytest
 from pages import ForgotPasswordPage
 
-
-@pytest.mark.ui
 def test_forgot_password_submit_shows_known_outcome(driver, base_url):
     """
     On the public heroku instance, submit may lead to an Internal Server Error.
