@@ -37,3 +37,11 @@ class FloatingMenuPage:
 
     def current_hash(self) -> str:
         return self.driver.execute_script("return window.location.hash;") or ""
+    
+    def scroll_to_bottom(self) -> None:
+        self.driver.execute_script("""
+            window.scrollTo(0, Math.max(
+                document.body.scrollHeight,
+                document.documentElement.scrollHeight
+            ));
+        """)
