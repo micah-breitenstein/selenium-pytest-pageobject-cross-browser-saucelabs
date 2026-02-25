@@ -26,6 +26,8 @@ _EXPORTS: dict[str, str] = {
     "FileDownloadPage": "file_download_page",
     "FileUploadPage": "file_upload_page",
     "FloatingMenuPage": "floating_menu_page",
+    "ForgotPasswordPage": "forgot_password_page",
+
 
 }
 
