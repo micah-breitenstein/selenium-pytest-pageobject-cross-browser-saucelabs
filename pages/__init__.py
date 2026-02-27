@@ -3,6 +3,34 @@ from __future__ import annotations
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
+_EXPORTS: dict[str, str] = {
+    "ABTestPage": "ab_test_page",
+    "AddRemoveElementsPage": "add_remove_elements_page",
+    "BasicAuthPage": "basic_auth_page",
+    "BrokenImagesPage": "broken_images_page",
+    "ChallengingDomPage": "challenging_dom_page",
+    "CheckboxesPage": "checkboxes_page",
+    "ContextMenuPage": "context_menu_page",
+    "DigestAuthPage": "digest_auth_page",
+    "DisappearingElementsPage": "disappearing_elements_page",
+    "DragAndDropPage": "drag_and_drop_page",
+    "DropdownPage": "dropdown_page",
+    "DynamicContentPage": "dynamic_content_page",
+    "DynamicLoadingPage": "dynamic_loading_page",
+    "EntryAdPage": "entry_ad_page",
+    "ExitIntentPage": "exit_intent_page",
+    "FileDownloadPage": "file_download_page",
+    "FileUploadPage": "file_upload_page",
+    "FloatingMenuPage": "floating_menu_page",
+    "ForgotPasswordPage": "forgot_password_page",
+    "HomePage": "homepage",
+    "IFramePage": "iframe_page",
+    "LandingPage": "landing_page",
+    "LoginPage": "login_page",
+    "NestedFramesPage": "nested_frames_page",
+    "SecureAreaPage": "secure_area_page",
+    "IFramePage": "iframe_page",
+}
 
 __all__ = sorted(_EXPORTS.keys())
 
