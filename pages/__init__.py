@@ -31,6 +31,8 @@ _EXPORTS: dict[str, str] = {
     "SecureAreaPage": "secure_area_page",
     "IFramePage": "iframe_page",
     "GeolocationPage": "geolocation_page",
+    "HorizontalSliderPage": "horizontal_slider_page",
+
 }
 
 __all__ = sorted(_EXPORTS.keys())
